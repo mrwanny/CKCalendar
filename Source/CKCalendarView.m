@@ -29,6 +29,45 @@
 
 #define UIColorFromRGB(rgbValue) [UIColor colorWithRed:((float)((rgbValue & 0xFF0000) >> 16))/255.0 green:((float)((rgbValue & 0xFF00) >> 8))/255.0 blue:((float)(rgbValue & 0xFF))/255.0 alpha:1.0]
 
+@interface NSDate (SameDay)
+- (BOOL)isSameDayAsDate:(NSDate*)otherDate;
+@end
+
+@implementation NSDate (SameDay)
+
+- (BOOL)isSameDayAsDate:(NSDate*)otherDate {
+    
+    NSCalendar* calendar = [NSCalendar currentCalendar];
+    unsigned unitFlags = NSYearCalendarUnit | NSMonthCalendarUnit |  NSDayCalendarUnit;
+    NSDateComponents* comp1 = [calendar components:unitFlags fromDate:self];
+    NSDateComponents* comp2 = [calendar components:unitFlags fromDate:otherDate];
+    
+    return [comp1 day]   == [comp2 day] &&
+    [comp1 month] == [comp2 month] &&
+    [comp1 year]  == [comp2 year];
+}
+
+@end
+
+@interface NSArray (ContainsDate)
+/*
+ * @return the date if found else nil
+ */
+- (id)containsDate:(NSDate*)date;
+@end
+
+@implementation NSArray (ContainsDate)
+
+- (id)containsDate:(NSDate*)date{
+    for (NSDate* aDate in self ) {
+        if ([aDate isSameDayAsDate:date]) {
+            return aDate;
+        }
+    }
+    return nil;
+}
+
+@end
 
 @class CALayer;
 @class CAGradientLayer;
@@ -134,6 +173,9 @@
 }
 
 - (void)_init:(CKCalendarStartDay)firstDay {
+    self.allowMultipleSelection = YES;
+    self.selectedDates = [NSMutableArray arrayWithCapacity:1];
+    
     self.calendar = [[NSCalendar alloc] initWithCalendarIdentifier:NSGregorianCalendar];
     [self.calendar setLocale:[NSLocale currentLocale]];
 
@@ -317,6 +359,21 @@
             [dateButton setTitleColor:item.textColor forState:UIControlStateNormal];
             dateButton.backgroundColor = item.backgroundColor;
         }
+        if (self.allowMultipleSelection) {
+            NSInteger segmentIndex = 0;
+            for (NSDate *aSelectedDate in self.selectedDates) {
+                if ([date compare:aSelectedDate]>0) {
+                    segmentIndex++;
+                }
+            }
+            if ((0 < segmentIndex) && (segmentIndex < [self.selectedDates count])) {
+                dateButton.backgroundColor = [UIColor redColor];
+            }
+            
+            if ([self.selectedDates containsDate:date]) {
+                dateButton.backgroundColor = [UIColor greenColor];
+            }
+        }
 
         dateButton.frame = [self _calculateDayCellFrame:date];
 
@@ -478,6 +535,19 @@
     } else if ([self.delegate respondsToSelector:@selector(calendar:willSelectDate:)] && ![self.delegate calendar:self willSelectDate:date]) {
         return;
     }
+    
+    if (self.allowMultipleSelection) {
+        NSDate *alreadySelectedDate = [self.selectedDates containsDate:dateButton.date];
+        if (alreadySelectedDate) {
+            [self.selectedDates removeObject:alreadySelectedDate];
+        }else {
+            [self.selectedDates addObject:dateButton.date];
+            [self.selectedDates sortUsingComparator:^NSComparisonResult(id obj1, id obj2) {
+                return [obj1 compare:obj2];
+            }];
+        }
+    }
+
 
     [self selectDate:date makeVisible:YES];
     [self.delegate calendar:self didSelectDate:date];

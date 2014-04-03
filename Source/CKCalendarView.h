@@ -41,6 +41,9 @@ typedef enum {
 
 @property (nonatomic, readonly) NSArray *datesShowing;
 
+@property (nonatomic) BOOL allowMultipleSelection;
+@property (nonatomic,strong) NSMutableArray *selectedDates;
+
 @property (nonatomic) BOOL onlyShowCurrentMonth;
 @property (nonatomic) BOOL adaptHeightToNumberOfWeeksInMonth;
 
